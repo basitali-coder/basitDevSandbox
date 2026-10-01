@@ -247,7 +247,22 @@
 
     if (frontdoor.frontdoor_uri) {
 
-                 document.getElementById("loApp").frontdoorUrl = frontdoor.frontdoor_uri;
+            const loApp = document.getElementById("loApp");
+
+loApp.setAttribute(
+    "frontdoor-url",
+    frontdoor.frontdoor_uri
+);
+
+console.log(
+    "ATTRIBUTE:",
+    loApp.getAttribute("frontdoor-url")
+);
+
+console.log(
+    "PROPERTY:",
+    loApp.frontdoorUrl
+);
             // Expand component height after Salesforce session is ready
             expandLightningComponent();
 
