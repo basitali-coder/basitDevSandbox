@@ -105,99 +105,171 @@
         window.location.href = loginUrl;
     };
     
-    // Handle the OAuth callback from Salesforce
-    (async function () {
-        // Read the authorization code from the URL
-        const params = new URLSearchParams(window.location.search);
-    
-        const code = params.get("code");
-        if (!code) {
-            return;
-        }
-    
-        // Retrieve the PKCE verifier used during login
-        const verifier = sessionStorage.getItem("pkce_verifier");
-    
-        // Exchange the authorization code for an access token
-        const tokenResponse =
-            await fetch(
-                SF_DOMAIN +
-                "/services/oauth2/token",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/x-www-form-urlencoded"
-                    },
-                    body:
-                        new URLSearchParams({
-    
-                            grant_type: "authorization_code",
-                            client_id: CLIENT_ID,
-                            code: code,
-    
-                            redirect_uri: REDIRECT_URI,
-    
-                            code_verifier: verifier
-    
-                        })
-                }
-            );
-    
-    
-        const token =  await tokenResponse.json();
-        console.log( "Token response",  token);
-    
-        if (!token.access_token) {
-            alert( JSON.stringify(token));
-            return;
-        }
-    
-        // Remove the OAuth code from the browser address bar
-        window.history.replaceState({}, document.title, window.location.pathname);
-    
-        // Get a Lightning Out frontdoor URL from the Cloudflare Worker
-    
-        const fdResponse =
-            await fetch(
-                WORKER_URL,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:
-                        JSON.stringify({
-                            access_token:
-                                token.access_token
-                        })
-                }
-            );
-    
-    
-        const frontdoor =
-            await fdResponse.json();
-    
-    
-        console.log(
-            "Frontdoor response",
-            frontdoor
+// Handle the OAuth callback from Salesforce
+(async function () {
+
+    // Read the authorization code from the URL
+    const params =
+        new URLSearchParams(
+            window.location.search
         );
-    
-        // Pass the frontdoor URL to Lightning Out
-    
-        if (frontdoor.frontdoor_uri) {
-            document.getElementById("loApp").frontdoorUrl = frontdoor.frontdoor_uri;
-            // Expand component height after Salesforce session is ready
-            expandLightningComponent();
-        }
-        else {
-            alert(
-                JSON.stringify(frontdoor)
-            );
-        }
-    })();
+
+    const code =
+        params.get("code");
+
+    if (!code) {
+        return;
+    }
+
+
+    // Retrieve the PKCE verifier used during login
+    const verifier =
+        sessionStorage.getItem(
+            "pkce_verifier"
+        );
+
+
+    if (!verifier) {
+
+        alert(
+            "PKCE verifier not found in sessionStorage."
+        );
+
+        return;
+    }
+
+
+    /*
+     * Exchange authorization code for access token
+     *
+     * IMPORTANT:
+     * This now goes to Cloudflare Worker rather than
+     * Salesforce directly.
+     */
+
+    const tokenResponse =
+        await fetch(
+            WORKER_URL + "/token",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        code:
+                            code,
+
+                        code_verifier:
+                            verifier,
+
+                        redirect_uri:
+                            REDIRECT_URI
+
+                    })
+            }
+        );
+
+
+    const token =
+        await tokenResponse.json();
+
+
+    console.log(
+        "Token response",
+        token
+    );
+
+
+    if (!tokenResponse.ok ||
+        !token.access_token) {
+
+        alert(
+            JSON.stringify(token)
+        );
+
+        return;
+    }
+
+
+    /*
+     * Remove the OAuth code from the
+     * browser address bar.
+     */
+
+    window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+    );
+
+
+    /*
+     * Get a Lightning Out frontdoor URL
+     * from the Cloudflare Worker.
+     */
+
+    const fdResponse =
+        await fetch(
+            WORKER_URL + "/frontdoor",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        access_token:
+                            token.access_token
+
+                    })
+            }
+        );
+
+
+    const frontdoor =
+        await fdResponse.json();
+
+
+    console.log(
+        "Frontdoor response",
+        frontdoor
+    );
+
+
+    if (frontdoor.frontdoor_uri) {
+
+        document
+            .getElementById("loApp")
+            .frontdoorUrl =
+                frontdoor.frontdoor_uri;
+
+
+        // Expand component height after
+        // Salesforce session is ready
+
+        expandLightningComponent();
+
+    }
+    else {
+
+        alert(
+            JSON.stringify(frontdoor)
+        );
+
+    }
+
+})();
+
+
 
 </script>
 
