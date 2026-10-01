@@ -247,21 +247,10 @@
 
     if (frontdoor.frontdoor_uri) {
 
-       console.log(
-    "Opening frontdoor:",
-    frontdoor.frontdoor_uri
-);
+                 document.getElementById("loApp").frontdoorUrl = frontdoor.frontdoor_uri;
+            // Expand component height after Salesforce session is ready
+            expandLightningComponent();
 
-window.open(
-    frontdoor.frontdoor_uri,
-    "_blank"
-);
-
-
-        // Expand component height after
-        // Salesforce session is ready
-
-        expandLightningComponent();
 
     }
     else {
